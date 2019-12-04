@@ -1,7 +1,18 @@
-function hasAdjacentMatchingCharacters(word: string): boolean {
+function hasExactlyTwoAdjacentMatchingCharacters(word: string): boolean {
   for (let i = 1; i < word.length; i++) {
     if (word.charAt(i - 1) === word.charAt(i)) {
-      return true;
+      if (i === word.length - 1) {
+        return true;
+      }      
+      else if (word.charAt(i) != word.charAt(i + 1)) {
+        return true;
+      } 
+      else {
+        const matchingCharacter: string = word.charAt(i);
+        while (i + 1 < word.length && word.charAt(i + 1) === matchingCharacter) {
+          i++;
+        }
+      }
     }
   }
   return false;
@@ -23,7 +34,7 @@ function countValuesMeetingPasswordCriteria(): number {
 
   for (let i = min; i <= max; i++) {
     const password: string = String(i);
-    if (!hasAdjacentMatchingCharacters(password)) {
+    if (!hasExactlyTwoAdjacentMatchingCharacters(password)) {
       continue;
     }
     if (!successiveCharactersNeverDecrease(password)) {
