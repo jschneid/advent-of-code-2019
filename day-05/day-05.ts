@@ -68,6 +68,10 @@ class Instruction {
       this.performAddOperation();
     } else if (this.opcode == 2) {
       this.performMultiplyOperation();
+    } else if (this.opcode == 3) {
+      this.performInputOperation();
+    } else if (this.opcode == 4) {
+      this.performOutputOperation();
     } else {
       throw "Unexpected opcode " + this.opcode;
     }
@@ -85,10 +89,19 @@ class Instruction {
     const product: number = this.lookupParameterValue(0) * this.lookupParameterValue(1);
     memory[this.parameters[2]] = product;
   }
+
+  performInputOperation() {
+    const HARD_CODED_INPUT: number = 1;
+    memory[this.parameters[0]] = HARD_CODED_INPUT;
+  }
+
+  performOutputOperation() {
+    console.log("Output: " + this.lookupParameterValue(0));
+  }
 }
 
 function setOpcodesFromInputFile() {
-  const text: string = fs.readFileSync("day-02/input.txt", "utf8");
+  const text: string = fs.readFileSync("day-05/input.txt", "utf8");
   const opcodeStrings: string[] = text.split(",");
   memory = opcodeStrings.map(opcodeString => parseInt(opcodeString));
 }
@@ -104,32 +117,6 @@ function runProgram() {
   }  
 }
 
-function part1(): number {
-  setOpcodesFromInputFile();
-  memory[1] = 12;
-  memory[2] = 2;
-  runProgram();
 
-  return memory[0];
-}
-
-function part2(): number {
-  // The potential solution space here should be plenty small enough for brute force to work fine.
-  for (let noun: number = 0; noun <= 99; noun++) {
-    for (let verb: number = 0; verb <= 99; verb++) {
-      setOpcodesFromInputFile();
-      memory[1] = noun;
-      memory[2] = verb;
-      runProgram();
-      const output = memory[0];
-      if (output == 19690720) {
-        const solution = noun * 100 + verb;
-        return solution;
-      }
-    }
-  }
-
-  throw 'Could not find a solution';
-}
-
-console.log(part2());
+setOpcodesFromInputFile();
+runProgram();
