@@ -25,12 +25,14 @@ export class IntcodeComputer {
   instructionPointer: number;
   inputQueue: number[];
   outputQueue: number[];
+  terminated: boolean;
 
   constructor() {
     this.inputQueue = [];
     this.outputQueue = [];
     this.setOpcodesFromInputFile();
     this.instructionPointer = 0;
+    this.terminated = false;
   }
 
   setupInstruction(): Instruction {
@@ -85,6 +87,7 @@ export class IntcodeComputer {
 
     switch(instruction.opcode) {
       case 99:
+        this.terminated = true;
         return true;
       case 1:
         this.performAddOperation(instruction);
@@ -93,7 +96,10 @@ export class IntcodeComputer {
         this.performMultiplyOperation(instruction);
         break;
       case 3: 
-        this.performInputOperation(instruction);
+        const halt: boolean = this.performInputOperation(instruction);
+        if (halt) {
+          return true;
+        }
         break;
       case 4: 
         this.performOutputOperation(instruction);
@@ -131,8 +137,15 @@ export class IntcodeComputer {
     this.memory[instruction.parameters[2]] = product;
   }
 
-  performInputOperation(instruction: Instruction) {
-    this.memory[instruction.parameters[0]] = this.inputQueue.shift();
+  performInputOperation(instruction: Instruction): boolean {
+    if (this.inputQueue.length >= 1) {
+      this.memory[instruction.parameters[0]] = this.inputQueue.shift();
+      return false;
+    }
+    else {
+      // Let's halt for now since there are no more inputs for us to process yet.
+      return true;
+    }
   }
 
   performOutputOperation(instruction: Instruction) {
