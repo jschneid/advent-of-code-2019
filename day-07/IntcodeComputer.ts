@@ -20,14 +20,17 @@ class Instruction {
   }
 }
 
-class IntcodeComputer {
-
+export class IntcodeComputer {
   memory: number[];
   instructionPointer: number;
   inputQueue: number[];
+  outputQueue: number[];
 
   constructor() {
-  
+    this.inputQueue = [];
+    this.outputQueue = [];
+    this.setOpcodesFromInputFile();
+    this.instructionPointer = 0;
   }
 
   setupInstruction(): Instruction {
@@ -35,7 +38,6 @@ class IntcodeComputer {
     
     const instruction0 = this.memory[this.instructionPointer];
     instruction.opcode = instruction0 % 100;
-
     instruction.parameterCount = this.getParameterCount(instruction.opcode);
     for (let parameterIndex = 0; parameterIndex < instruction.parameterCount; parameterIndex++) {
       instruction.setParameterMode(instruction0, parameterIndex);
@@ -130,12 +132,11 @@ class IntcodeComputer {
   }
 
   performInputOperation(instruction: Instruction) {
-    const HARD_CODED_INPUT: number = 5;
-    this.memory[instruction.parameters[0]] = HARD_CODED_INPUT;
+    this.memory[instruction.parameters[0]] = this.inputQueue.shift();
   }
 
   performOutputOperation(instruction: Instruction) {
-    console.log("Output: " + this.lookupParameterValue(instruction, 0));
+    this.outputQueue.push(this.lookupParameterValue(instruction, 0));
   }
 
   performJumpIfTrueOperation(instruction: Instruction) {
@@ -167,7 +168,7 @@ class IntcodeComputer {
   }
 
   setOpcodesFromInputFile() {
-    const text: string = fs.readFileSync("day-05/input.txt", "utf8");
+    const text: string = fs.readFileSync("day-07/input.txt", "utf8");
     const opcodeStrings: string[] = text.split(",");
     this.memory = opcodeStrings.map(opcodeString => parseInt(opcodeString));
   }
@@ -178,12 +179,7 @@ class IntcodeComputer {
   }
 
   runProgram() {
-    this.instructionPointer = 0;
     while (!this.performOperation(this.instructionPointer)) {
     }  
   }
 }
-
-const ic = new IntcodeComputer();
-ic.setOpcodesFromInputFile();
-ic.runProgram();
