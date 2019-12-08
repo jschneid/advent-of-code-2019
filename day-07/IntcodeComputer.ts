@@ -1,0 +1,189 @@
+import * as fs from 'fs';
+
+class Instruction {
+  parameters: number[] = [];
+  parameterModes: number[] = [];
+  opcode: number;
+  parameterCount: number;
+
+  setParameterMode(instruction0: number, parameterIndex: number) {
+    const instruction0String = String(instruction0);
+    const opcodeLength = 2;
+    const parameterModeCharIndex = instruction0String.length - opcodeLength - parameterIndex - 1;
+
+    if (parameterModeCharIndex < 0) {
+      this.parameterModes[parameterIndex] = 0;
+    } 
+    else {
+      this.parameterModes[parameterIndex] = parseInt(instruction0String[parameterModeCharIndex]);
+    }
+  }
+}
+
+class IntcodeComputer {
+
+  memory: number[];
+  instructionPointer: number;
+  inputQueue: number[];
+
+  constructor() {
+  
+  }
+
+  setupInstruction(): Instruction {
+    const instruction: Instruction = new Instruction();
+    
+    const instruction0 = this.memory[this.instructionPointer];
+    instruction.opcode = instruction0 % 100;
+
+    instruction.parameterCount = this.getParameterCount(instruction.opcode);
+    for (let parameterIndex = 0; parameterIndex < instruction.parameterCount; parameterIndex++) {
+      instruction.setParameterMode(instruction0, parameterIndex);
+      instruction.parameters[parameterIndex] = this.memory[this.instructionPointer + parameterIndex + 1];
+    }
+
+    return instruction;
+  }
+
+  lookupParameterValue(instruction: Instruction, parameterIndex: number) {
+    if (instruction.parameterModes[parameterIndex] == 0) {
+      // Position mode
+      return this.memory[instruction.parameters[parameterIndex]];
+    }
+    else {
+      // Immediate mode
+      return instruction.parameters[parameterIndex];
+    }
+  }
+
+  getParameterCount(opcode: number): number {
+    switch(opcode) {
+      case 99: 
+        return 0;
+      case 1: 
+      case 2:
+      case 7:
+      case 8:
+        return 3;
+      case 3:
+      case 4:
+        return 1;
+      case 5:
+      case 6:
+        return 2;
+      default:
+        throw "Unrecognized opcode: " + opcode;
+    }
+  }
+
+  // Performs the operation for the instruction at the instruction pointer; then returns true if the 
+  // program should terminate (i.e. the instruction was 99), false otherwise.
+  perform(instruction: Instruction): boolean {
+    const initialInstructionPointerValue = this.instructionPointer;
+
+    switch(instruction.opcode) {
+      case 99:
+        return true;
+      case 1:
+        this.performAddOperation(instruction);
+        break;
+      case 2:
+        this.performMultiplyOperation(instruction);
+        break;
+      case 3: 
+        this.performInputOperation(instruction);
+        break;
+      case 4: 
+        this.performOutputOperation(instruction);
+        break;
+      case 5: 
+        this.performJumpIfTrueOperation(instruction);
+        break;
+      case 6:
+        this.performJumpIfFalseOperation(instruction);
+        break;
+      case 7:
+        this.performLessThanOperation(instruction);
+        break;
+      case 8: 
+        this.performEqualsOperation(instruction);
+        break;
+      default: 
+        throw "Unexpected opcode " + instruction.opcode;
+    }
+
+    if (this.instructionPointer === initialInstructionPointerValue) {
+      this.instructionPointer += instruction.parameterCount + 1;
+    }
+
+    return false;
+  }
+
+  performAddOperation(instruction: Instruction) {
+    const sum: number = this.lookupParameterValue(instruction, 0) + this.lookupParameterValue(instruction, 1);
+    this.memory[instruction.parameters[2]] = sum;
+  }
+  
+  performMultiplyOperation(instruction: Instruction) {
+    const product: number = this.lookupParameterValue(instruction, 0) * this.lookupParameterValue(instruction, 1);
+    this.memory[instruction.parameters[2]] = product;
+  }
+
+  performInputOperation(instruction: Instruction) {
+    const HARD_CODED_INPUT: number = 5;
+    this.memory[instruction.parameters[0]] = HARD_CODED_INPUT;
+  }
+
+  performOutputOperation(instruction: Instruction) {
+    console.log("Output: " + this.lookupParameterValue(instruction, 0));
+  }
+
+  performJumpIfTrueOperation(instruction: Instruction) {
+    if (this.lookupParameterValue(instruction, 0) !== 0) {
+      this.instructionPointer = this.lookupParameterValue(instruction, 1);
+    }
+  }
+
+  performJumpIfFalseOperation(instruction: Instruction) {
+    if (this.lookupParameterValue(instruction, 0) === 0) {
+      this.instructionPointer = this.lookupParameterValue(instruction, 1);
+    }
+  }
+
+  performLessThanOperation(instruction: Instruction) {
+    if (this.lookupParameterValue(instruction, 0) < this.lookupParameterValue(instruction, 1)) {
+      this.memory[instruction.parameters[2]] = 1;
+    } else {
+      this.memory[instruction.parameters[2]] = 0;
+    }
+  }
+
+  performEqualsOperation(instruction: Instruction) {
+    if (this.lookupParameterValue(instruction, 0) === this.lookupParameterValue(instruction, 1)) {
+      this.memory[instruction.parameters[2]] = 1;
+    } else {
+      this.memory[instruction.parameters[2]] = 0;
+    }
+  }
+
+  setOpcodesFromInputFile() {
+    const text: string = fs.readFileSync("day-05/input.txt", "utf8");
+    const opcodeStrings: string[] = text.split(",");
+    this.memory = opcodeStrings.map(opcodeString => parseInt(opcodeString));
+  }
+
+  performOperation(instructionPointer: number): boolean {
+    const instruction: Instruction = this.setupInstruction();
+    return this.perform(instruction);
+  }
+
+  runProgram() {
+    this.instructionPointer = 0;
+    while (!this.performOperation(this.instructionPointer)) {
+    }  
+  }
+}
+
+const ic = new IntcodeComputer();
+ic.setOpcodesFromInputFile();
+ic.runProgram();
