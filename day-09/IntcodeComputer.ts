@@ -8,8 +8,8 @@ class Instruction {
 
   setParameterMode(instruction0: number, parameterIndex: number) {
     const instruction0String = String(instruction0);
-    const opcodeLength = 2;
-    const parameterModeCharIndex = instruction0String.length - opcodeLength - parameterIndex - 1;
+    const OPCODE_LENGTH = 2;
+    const parameterModeCharIndex = instruction0String.length - OPCODE_LENGTH - parameterIndex - 1;
 
     if (parameterModeCharIndex < 0) {
       this.parameterModes[parameterIndex] = 0;
@@ -26,6 +26,7 @@ export class IntcodeComputer {
   inputQueue: number[];
   outputQueue: number[];
   terminated: boolean;
+  relativeBase: number;
 
   constructor() {
     this.inputQueue = [];
@@ -33,30 +34,66 @@ export class IntcodeComputer {
     this.setOpcodesFromInputFile();
     this.instructionPointer = 0;
     this.terminated = false;
+    this.relativeBase = 0;
   }
 
   setupInstruction(): Instruction {
     const instruction: Instruction = new Instruction();
-    
-    const instruction0 = this.memory[this.instructionPointer];
+
+    const instruction0 = this.readMemory(this.instructionPointer);
     instruction.opcode = instruction0 % 100;
     instruction.parameterCount = this.getParameterCount(instruction.opcode);
     for (let parameterIndex = 0; parameterIndex < instruction.parameterCount; parameterIndex++) {
       instruction.setParameterMode(instruction0, parameterIndex);
-      instruction.parameters[parameterIndex] = this.memory[this.instructionPointer + parameterIndex + 1];
+      instruction.parameters[parameterIndex] = this.readMemory(this.instructionPointer + parameterIndex + 1);
     }
 
     return instruction;
   }
 
-  lookupParameterValue(instruction: Instruction, parameterIndex: number) {
+  readMemory(location: number): number {
+    let value: number = this.memory[location];
+    if (!value) {
+      value = 0;
+    }
+    return value;
+  }
+
+  lookupParameterValue(instruction: Instruction, parameterIndex: number):number {
     if (instruction.parameterModes[parameterIndex] == 0) {
       // Position mode
-      return this.memory[instruction.parameters[parameterIndex]];
+      return this.readMemory(this.lookupParameterMemoryLocation(instruction, parameterIndex));
     }
-    else {
+    else if (instruction.parameterModes[parameterIndex] == 1) {
       // Immediate mode
       return instruction.parameters[parameterIndex];
+    } 
+    else if (instruction.parameterModes[parameterIndex] == 2) {
+      // Relative mode
+      const adjustedMemoryLocation = this.lookupParameterMemoryLocation(instruction, parameterIndex);
+      return this.readMemory(adjustedMemoryLocation);
+    } 
+    else {
+      throw 'Unrecognized parameter mode: ' + instruction.parameterModes[parameterIndex];
+    }
+  }
+
+  lookupParameterMemoryLocation(instruction: Instruction, parameterIndex: number):number {
+    if (instruction.parameterModes[parameterIndex] == 0) {
+      // Position mode
+      return instruction.parameters[parameterIndex];
+    }
+    else if (instruction.parameterModes[parameterIndex] == 1) {
+      // Immediate mode
+      throw("Unexpected immediate mode while calculating memory location");
+    } 
+    else if (instruction.parameterModes[parameterIndex] == 2) {
+      // Relative mode
+      const adjustedMemoryLocation = instruction.parameters[parameterIndex] + this.relativeBase;
+      return adjustedMemoryLocation;
+    } 
+    else {
+      throw 'Unrecognized parameter mode: ' + instruction.parameterModes[parameterIndex];
     }
   }
 
@@ -71,6 +108,7 @@ export class IntcodeComputer {
         return 3;
       case 3:
       case 4:
+      case 9:
         return 1;
       case 5:
       case 6:
@@ -81,7 +119,7 @@ export class IntcodeComputer {
   }
 
   // Performs the operation for the instruction at the instruction pointer; then returns true if the 
-  // program should terminate (i.e. the instruction was 99), false otherwise.
+  // program should stop executing, false otherwise.
   perform(instruction: Instruction): boolean {
     const initialInstructionPointerValue = this.instructionPointer;
 
@@ -116,6 +154,9 @@ export class IntcodeComputer {
       case 8: 
         this.performEqualsOperation(instruction);
         break;
+      case 9:
+        this.performAdjustRelativeBaseOperation(instruction);
+        break;
       default: 
         throw "Unexpected opcode " + instruction.opcode;
     }
@@ -129,17 +170,20 @@ export class IntcodeComputer {
 
   performAddOperation(instruction: Instruction) {
     const sum: number = this.lookupParameterValue(instruction, 0) + this.lookupParameterValue(instruction, 1);
-    this.memory[instruction.parameters[2]] = sum;
+    const targetLocation = this.lookupParameterMemoryLocation(instruction, 2);
+    this.memory[targetLocation] = sum;
   }
   
   performMultiplyOperation(instruction: Instruction) {
     const product: number = this.lookupParameterValue(instruction, 0) * this.lookupParameterValue(instruction, 1);
-    this.memory[instruction.parameters[2]] = product;
+    const targetLocation = this.lookupParameterMemoryLocation(instruction, 2);
+    this.memory[targetLocation] = product;
   }
 
   performInputOperation(instruction: Instruction): boolean {
     if (this.inputQueue.length >= 1) {
-      this.memory[instruction.parameters[0]] = this.inputQueue.shift();
+      const targetLocation = this.lookupParameterMemoryLocation(instruction, 0);
+      this.memory[targetLocation] = this.inputQueue.shift();
       return false;
     }
     else {
@@ -149,7 +193,8 @@ export class IntcodeComputer {
   }
 
   performOutputOperation(instruction: Instruction) {
-    this.outputQueue.push(this.lookupParameterValue(instruction, 0));
+    const outputValue = this.lookupParameterValue(instruction, 0);
+    this.outputQueue.push(outputValue);
   }
 
   performJumpIfTrueOperation(instruction: Instruction) {
@@ -165,23 +210,29 @@ export class IntcodeComputer {
   }
 
   performLessThanOperation(instruction: Instruction) {
+    const targetLocation = this.lookupParameterMemoryLocation(instruction, 2);
     if (this.lookupParameterValue(instruction, 0) < this.lookupParameterValue(instruction, 1)) {
-      this.memory[instruction.parameters[2]] = 1;
+      this.memory[targetLocation] = 1;
     } else {
-      this.memory[instruction.parameters[2]] = 0;
+      this.memory[targetLocation] = 0;
     }
   }
 
   performEqualsOperation(instruction: Instruction) {
+    const targetLocation = this.lookupParameterMemoryLocation(instruction, 2);
     if (this.lookupParameterValue(instruction, 0) === this.lookupParameterValue(instruction, 1)) {
-      this.memory[instruction.parameters[2]] = 1;
+      this.memory[targetLocation] = 1;
     } else {
-      this.memory[instruction.parameters[2]] = 0;
+      this.memory[targetLocation] = 0;
     }
   }
 
+  performAdjustRelativeBaseOperation(instruction: Instruction) {
+    this.relativeBase += this.lookupParameterValue(instruction, 0);
+  }
+
   setOpcodesFromInputFile() {
-    const text: string = fs.readFileSync("day-07/input.txt", "utf8");
+    const text: string = fs.readFileSync("day-09/input.txt", "utf8");
     const opcodeStrings: string[] = text.split(",");
     this.memory = opcodeStrings.map(opcodeString => parseInt(opcodeString));
   }
