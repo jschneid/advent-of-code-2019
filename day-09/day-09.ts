@@ -1,7 +1,7 @@
 import { IntcodeComputer } from './IntcodeComputer';
 
 const computer = new IntcodeComputer();
-computer.inputQueue.push(1);
+computer.inputQueue.push(2);
 computer.runProgram();
 
 const outputQueueLength = computer.outputQueue.length;
