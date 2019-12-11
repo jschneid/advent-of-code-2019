@@ -1,7 +1,14 @@
 import * as fs from 'fs';
 
-// "True" is an asteroid. "False" is empty space.
-const asteroids: boolean[][] = [];
+class Asteroid {
+  x: number;
+  y: number;
+  relativeAngle: number;
+}
+
+const asteroids: Asteroid[] = [];
+let width: number;
+let height: number;
 
 function getInputLinesFromFile(): string[] {
   const text: string = fs.readFileSync("day-10/input.txt", "utf8");
@@ -11,12 +18,19 @@ function getInputLinesFromFile(): string[] {
 
 function initializeAsteroids() {
   const inputLines = getInputLinesFromFile();
-  for (const line of inputLines) {
-    const asteroidLine: boolean[] = [];
-    for (let c = 0; c < line.length; c++) {
-      asteroidLine.push(line.charAt(c) === "#");
+
+  height = inputLines.length;
+  width = inputLines[0].length;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (inputLines[y].charAt(x) === "#") {
+        const asteroid = new Asteroid();
+        asteroid.x = x;
+        asteroid.y = y;
+        asteroids.push(asteroid);
+      }
     }
-    asteroids.push(asteroidLine);
   }
 }
 
@@ -36,10 +50,8 @@ function asteroidId(x: number, y: number): string {
   return x + "," + y;
 }
 
-function getVisibleAsteroidsCountForAsteroidAt(baseX: number, baseY: number): number {
-  const width = asteroids[0].length;
-  const height = asteroids.length;
-  const asteroidsSeen: string[] = [];
+function getVisibleAsteroidsCountForAsteroid(baseAsteroid: Asteroid): number {
+  const asteroidsSeen: Asteroid[] = [];
 
   // Starting at the position of the base asteroid, plot a course directly towards each
   // other asteroid, using the minimum possible size steps (where delta-x and delta-y are
@@ -48,19 +60,20 @@ function getVisibleAsteroidsCountForAsteroidAt(baseX: number, baseY: number): nu
   for (let x = 0; x < width; x++) {
     for (let y = 0; y < height; y++) {
       // If there's no asteroid at this position, move to the next x,y position.
-      if (!asteroids[x][y]) {
+      const targetAsteroid = getAsteroidAt(x, y);
+      if (!targetAsteroid) {
         continue;
       }
 
-      // If this is the position of our base asteroid, move on to the next x,y position.
-      if (x === baseX && y === baseY) {
+      // If this is our base asteroid, move on to the next x,y position.
+      if (targetAsteroid === baseAsteroid) {
         continue;
       }
 
       // Set dx and dy ("delta-x" and "delta-y") to the smallest possible integer-size 
       // step size from the base asteroid towards the target asteroid.
-      let dx: number = x - baseX;
-      let dy: number = y - baseY; 
+      let dx: number = x - baseAsteroid.x;
+      let dy: number = y - baseAsteroid.y; 
       while (true) {
         const divisor = greatestCommonDivisor(Math.abs(dx), Math.abs(dy));
         if (divisor > 1) { 
@@ -75,15 +88,15 @@ function getVisibleAsteroidsCountForAsteroidAt(baseX: number, baseY: number): nu
       // One step at a time, move from the base asteroid to the target asteroid. 
       // When we encounter any asteroid, add it to the list of asteroids we've seen
       // (if it's not already on there), then start over with the next target.
-      let newX: number = baseX;
-      let newY: number = baseY;
+      let newX: number = baseAsteroid.x;
+      let newY: number = baseAsteroid.y;
       while (newX >= 0 && newX < width && newY >= 0 && newY < height) {
         newX += dx;
         newY += dy;
-        if (asteroids[newX][newY]) {
-          const id = asteroidId(newX, newY);
-          if (!asteroidsSeen.includes(id)) {
-            asteroidsSeen.push(id);
+        const asteroidAtPosition = getAsteroidAt(newX, newY);
+        if (asteroidAtPosition) {
+          if (!asteroidsSeen.includes(asteroidAtPosition)) {
+            asteroidsSeen.push(asteroidAtPosition);
           }
           break;
         }
@@ -94,19 +107,21 @@ function getVisibleAsteroidsCountForAsteroidAt(baseX: number, baseY: number): nu
   return asteroidsSeen.length;
 }
 
-function findVisibleAsteroidsCountForBestMonitoringLocation(): number {
-  const width = asteroids[0].length;
-  const height = asteroids.length;
-  
+function getAsteroidAt(x: number, y: number): Asteroid {
+  return asteroids.find(a => a.x === x && a.y === y);
+}
+
+function findVisibleAsteroidsCountForBestMonitoringLocation(): number {  
   let mostVisibleAsteroids = 0;
 
   for (let x = 0; x < width; x++) {
     for (let y = 0; y < height; y++) {
-      if (!asteroids[x][y]) {
+      const baseAsteroid = getAsteroidAt(x, y);
+      if (!baseAsteroid) {
         continue;
       }
 
-      const visibleAsteroids = getVisibleAsteroidsCountForAsteroidAt(x, y);
+      const visibleAsteroids = getVisibleAsteroidsCountForAsteroid(baseAsteroid);
 
       if (visibleAsteroids > mostVisibleAsteroids) {
         mostVisibleAsteroids = visibleAsteroids;
