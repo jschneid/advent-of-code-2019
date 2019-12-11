@@ -9,6 +9,7 @@ class Asteroid {
 const asteroids: Asteroid[] = [];
 let width: number;
 let height: number;
+let currentCannonAngle: number; 
 
 function getInputLinesFromFile(): string[] {
   const text: string = fs.readFileSync("day-10/input.txt", "utf8");
@@ -50,7 +51,7 @@ function asteroidId(x: number, y: number): string {
   return x + "," + y;
 }
 
-function getVisibleAsteroidsCountForAsteroid(baseAsteroid: Asteroid): number {
+function getVisibleAsteroids(baseAsteroid: Asteroid): Asteroid[] {
   const asteroidsSeen: Asteroid[] = [];
 
   // Starting at the position of the base asteroid, plot a course directly towards each
@@ -96,6 +97,10 @@ function getVisibleAsteroidsCountForAsteroid(baseAsteroid: Asteroid): number {
         const asteroidAtPosition = getAsteroidAt(newX, newY);
         if (asteroidAtPosition) {
           if (!asteroidsSeen.includes(asteroidAtPosition)) {
+            // We need to flip the delta-y because the atan2 calculation assumes that y-coordinates have higher values at the top,
+            // but our coordiante system for this problem has the lowest y-coordinate (0) at the top.
+            asteroidAtPosition.relativeAngle = getRelativeAngle(dx, -1 * dy);
+            
             asteroidsSeen.push(asteroidAtPosition);
           }
           break;
@@ -104,34 +109,65 @@ function getVisibleAsteroidsCountForAsteroid(baseAsteroid: Asteroid): number {
     }
   }
 
-  return asteroidsSeen.length;
+  return asteroidsSeen;
+}
+
+function getRelativeAngle(dx: number, dy: number): number {
+  // https://stackoverflow.com/a/15994225/12484
+  return Math.atan2(dy, dx); // In radians
 }
 
 function getAsteroidAt(x: number, y: number): Asteroid {
   return asteroids.find(a => a.x === x && a.y === y);
 }
 
-function findVisibleAsteroidsCountForBestMonitoringLocation(): number {  
-  let mostVisibleAsteroids = 0;
+function vaporize(asteroid: Asteroid) {
+  currentCannonAngle = asteroid.relativeAngle;
+  const index = asteroids.indexOf(asteroid);
+  asteroids.splice(index, 1);
+}
 
-  for (let x = 0; x < width; x++) {
-    for (let y = 0; y < height; y++) {
-      const baseAsteroid = getAsteroidAt(x, y);
-      if (!baseAsteroid) {
-        continue;
-      }
+function nextAsteroidToVaporize(visibleTargets: Asteroid[]): Asteroid {
+  // Sort the visible targets in clockwise order.
+  visibleTargets.sort((a,b) => (a.relativeAngle > b.relativeAngle) ? -1 : ((b.relativeAngle > a.relativeAngle) ? 1 : 0)); 
 
-      const visibleAsteroids = getVisibleAsteroidsCountForAsteroid(baseAsteroid);
-
-      if (visibleAsteroids > mostVisibleAsteroids) {
-        mostVisibleAsteroids = visibleAsteroids;
-      }
-    }
+  // Return the next target that's clockwise from the current cannon position.
+  let target = visibleTargets.find(a => a.relativeAngle < currentCannonAngle);
+  if (target) {
+    return target;
   }
 
-  return mostVisibleAsteroids;
+  // If we didn't get one, it's because we're at the point where the radians scale wraps around from negative to positive. 
+  // So, return the visible target with the maximum relative angle.
+  let maxAngle = Number.NEGATIVE_INFINITY;
+  for (let asteroid of asteroids) {
+    if (asteroid.relativeAngle > maxAngle) {
+      maxAngle = asteroid.relativeAngle;
+      target = asteroid;
+    }
+  }
+  return target;
+}
+
+function vaporize200Asteroids() {
+  // Start just barely left of vertical so that the first target the cannon will find moving clockwise is the one straight up
+  currentCannonAngle = Math.atan2(1, 0) + 0.000001;
+
+  // From the part 1 solution
+  const baseAsteroid = getAsteroidAt(20, 19);
+
+  const pi = Math.atan2(0, -1);
+
+  for (let vaporizedCount = 0; vaporizedCount < 200; vaporizedCount++) {
+    const visibleTargets: Asteroid[] = getVisibleAsteroids(baseAsteroid);
+
+    const target: Asteroid = nextAsteroidToVaporize(visibleTargets);
+    
+    console.log("#" + (vaporizedCount+1) + " Now vaporizing asteroid at: " + target.x + "," + target.y + " at angle " + (target.relativeAngle / pi) + "pi. Cannon is at angle " + (currentCannonAngle / pi) + "pi.");
+
+    vaporize(target);
+  }
 }
 
 initializeAsteroids();
-const count = findVisibleAsteroidsCountForBestMonitoringLocation();
-console.log(count);
+vaporize200Asteroids();
