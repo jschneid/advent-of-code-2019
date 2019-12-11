@@ -72,11 +72,50 @@ function paintedPanelCount(): number {
   return panels.filter(panel => panel.painted).length;
 }
 
+function outputImage() {
+  let minX: number = 0;
+  let maxX: number = 0;
+  let minY: number = 0;
+  let maxY: number = 0;
+
+  for (const panel of panels) {
+    if (panel.x < minX) {
+      minX = panel.x;
+    }
+    if (panel.x > maxX) {
+      maxX = panel.x;
+    }
+    if (panel.y < minY) {
+      minY = panel.y;
+    }
+    if (panel.y > maxY) {
+      panel.y = y;
+    }
+  }
+
+  for (let y = maxY; y >= minY; y--) {
+    let line: string = "";
+    for (let x = minX; x <= maxX; x++) {
+      const panel = getPanelAt(x, y);
+      if (panel.color == 0) {
+        line += ' ';
+      }
+      else {
+        line += '█';
+      }
+    }
+    console.log(line);
+  }
+}
+
 x = 0;
 y = 0;
 facing = 0;
 
 const computer = new IntcodeComputer();
+
+// Emergency hull painting robot starting panel
+getPanelAt(0, 0).color = 1;
 
 while(true) {
   if (computer.terminated) {
@@ -101,4 +140,4 @@ while(true) {
   computer.runProgram();
 }
 
-console.log(paintedPanelCount());
+console.log(outputImage());
