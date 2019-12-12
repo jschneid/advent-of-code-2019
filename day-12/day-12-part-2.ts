@@ -1,23 +1,18 @@
 export {};
 
 class Moon {
-  // Position
-  x: number;
-  y: number;
-  z: number;
-
-  // Velocity
-  vx: number;
-  vy: number;
-  vz: number;
+  positions: number[];
+  velocities: number[];
 
   constructor(x: number, y: number, z: number) {
-    this.x = x;
-    this.y = y;
-    this.z = z;
-    this.vx = 0;
-    this.vy = 0;
-    this.vz = 0;
+    this.positions = [];
+    this.positions[0] = x;
+    this.positions[1] = y;
+    this.positions[2] = z;
+    this.velocities = [];
+    this.velocities[0] = 0;
+    this.velocities[1] = 0;
+    this.velocities[2] = 0;
   }
 }
 
@@ -32,46 +27,40 @@ function applyGravity() {
 }
 
 function applyGravityForMoons(a: Moon, b: Moon) {
-  if (a.x < b.x) {
-    a.vx++;
-    b.vx--;
-  } 
-  else if (b.x < a.x) {
-    b.vx++;
-    a.vx--;
-  }
-  if (a.y < b.y) {
-    a.vy++;
-    b.vy--;
-  } 
-  else if (b.y < a.y) {
-    b.vy++;
-    a.vy--;
-  }
-  if (a.z < b.z) {
-    a.vz++;
-    b.vz--;
-  } 
-  else if (b.z < a.z) {
-    b.vz++;
-    a.vz--;
+  for (let dimension = 0; dimension <= 2; dimension++) {
+    if (a.positions[dimension] < b.positions[dimension]) {
+      a.velocities[dimension]++;
+      b.velocities[dimension]--;
+    } 
+    else if (b.positions[dimension] < a.positions[dimension]) {
+      b.velocities[dimension]++;
+      a.velocities[dimension]--;
+    } 
   }
 }
 
 function applyVelocity() {
   for (let i = 0; i < moons.length; i++) {
-    moons[i].x += moons[i].vx;
-    moons[i].y += moons[i].vy;
-    moons[i].z += moons[i].vz;
+    for (let dimension = 0; dimension <= 2; dimension++) {
+      moons[i].positions[dimension] += moons[i].velocities[dimension];      
+    }
   }
 }
 
 function potentialEnergy(moon: Moon): number {
-  return Math.abs(moon.x) + Math.abs(moon.y) + Math.abs(moon.z);
+  let energy = 0;
+  for (let dimension = 0; dimension <= 2; dimension++) {
+    energy += Math.abs(moon.positions[dimension]);
+  }
+  return energy;
 }
 
 function kineticEnergy(moon: Moon): number {
-  return Math.abs(moon.vx) + Math.abs(moon.vy) + Math.abs(moon.vz);
+  let energy = 0;
+  for (let dimension = 0; dimension <= 2; dimension++) {
+    energy += Math.abs(moon.velocities[dimension]);
+  }
+  return energy;
 }
 
 function totalMoonEnergy(moon: Moon): number {
@@ -93,7 +82,6 @@ function initializeMoons() {
   // <x=-4, y=-6, z=7>
   // <x=6, y=-9, z=-11>
   
-
   moons.push(new Moon(1, -4, 3));
   moons.push(new Moon(-14, 9, -4));
   moons.push(new Moon(-4, -6, 7));

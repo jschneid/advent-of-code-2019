@@ -1,3 +1,5 @@
+export {};
+
 class Moon {
   // Position
   x: number;
