@@ -18,61 +18,29 @@ class Moon {
 
 const moons: Moon[] = [];
 
-function applyGravity() {
+function applyGravity(dimension: number) {
   for (let i = 0; i < moons.length - 1; i++) {
     for (let j = i + 1; j < moons.length; j++) {
-      applyGravityForMoons(moons[i], moons[j]);
+      applyGravityForMoons(moons[i], moons[j], dimension);
     }
   }
 }
 
-function applyGravityForMoons(a: Moon, b: Moon) {
-  for (let dimension = 0; dimension <= 2; dimension++) {
-    if (a.positions[dimension] < b.positions[dimension]) {
-      a.velocities[dimension]++;
-      b.velocities[dimension]--;
-    } 
-    else if (b.positions[dimension] < a.positions[dimension]) {
-      b.velocities[dimension]++;
-      a.velocities[dimension]--;
-    } 
-  }
+function applyGravityForMoons(a: Moon, b: Moon, dimension: number) {
+  if (a.positions[dimension] < b.positions[dimension]) {
+    a.velocities[dimension]++;
+    b.velocities[dimension]--;
+  } 
+  else if (b.positions[dimension] < a.positions[dimension]) {
+    b.velocities[dimension]++;
+    a.velocities[dimension]--;
+  } 
 }
 
-function applyVelocity() {
+function applyVelocity(dimension: number) {
   for (let i = 0; i < moons.length; i++) {
-    for (let dimension = 0; dimension <= 2; dimension++) {
-      moons[i].positions[dimension] += moons[i].velocities[dimension];      
-    }
+    moons[i].positions[dimension] += moons[i].velocities[dimension];      
   }
-}
-
-function potentialEnergy(moon: Moon): number {
-  let energy = 0;
-  for (let dimension = 0; dimension <= 2; dimension++) {
-    energy += Math.abs(moon.positions[dimension]);
-  }
-  return energy;
-}
-
-function kineticEnergy(moon: Moon): number {
-  let energy = 0;
-  for (let dimension = 0; dimension <= 2; dimension++) {
-    energy += Math.abs(moon.velocities[dimension]);
-  }
-  return energy;
-}
-
-function totalMoonEnergy(moon: Moon): number {
-  return potentialEnergy(moon) * kineticEnergy(moon);
-}
-
-function totalSystemEnergy(): number {
-  let totalEnergy: number = 0;
-  for (let i = 0; i < moons.length; i++) {
-    totalEnergy += totalMoonEnergy(moons[i]);
-  }
-  return totalEnergy;
 }
 
 function initializeMoons() {
@@ -88,13 +56,57 @@ function initializeMoons() {
   moons.push(new Moon(6, -9, -11));
 }
 
-function runSimulation1000Steps() {
-  for (let step = 0; step < 1000; step++) {
-    applyGravity();
-    applyVelocity();
+function areWeBackAtInitialState(initialPositions: number[], dimension: number): boolean {
+  for (let i = 0; i < moons.length; i++) { 
+    if (moons[i].positions[dimension] !== initialPositions[i] || moons[i].velocities[dimension] !== 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function findDimensionCycleLength(dimension: number) {
+  let steps = 0;
+
+  const initialPositions = [];
+  for (let i = 0; i < moons.length; i++) {
+    initialPositions.push(moons[i].positions[dimension]);
+  }
+
+  while (true) {
+    applyGravity(dimension);
+    applyVelocity(dimension);
+    steps++;
+
+    if (areWeBackAtInitialState(initialPositions, dimension)) {
+      return steps;
+    }
   }
 }
 
+// https://www.w3resource.com/javascript-exercises/javascript-math-exercise-10.php
+function getLeastCommonMultiple(x: number, y: number): number {
+  return (!x || !y) ? 0 : Math.abs((x * y) / getGreatestCommonDivisor(x, y));
+}
+
+// https://www.w3resource.com/javascript-exercises/javascript-math-exercise-10.php
+function getGreatestCommonDivisor(x: number, y: number): number {
+  x = Math.abs(x);
+  y = Math.abs(y);
+  while(y) {
+    var t = y;
+    y = x % y;
+    x = t;
+  }
+  return x;
+}
+
 initializeMoons();
-runSimulation1000Steps();
-console.log(totalSystemEnergy());
+
+const cycleLength0 = findDimensionCycleLength(0);
+const cycleLength1 = findDimensionCycleLength(1);
+const cycleLength2 = findDimensionCycleLength(2);
+
+const solution = getLeastCommonMultiple(getLeastCommonMultiple(cycleLength0, cycleLength1), cycleLength2);
+
+console.log(solution);
