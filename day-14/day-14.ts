@@ -21,6 +21,8 @@ class Reaction {
 }
 
 let reactions: Reaction[] = [];
+let chemicalQuantitiesInStock: ChemicalQuantity[] = [];
+let oreRequired: number = 0;
 
 function parseChemicalQuantityString(input: string): ChemicalQuantity {
   const quantityAndChemical = input.trim().split(" ");
@@ -49,18 +51,58 @@ function setReactionsFromInputFile() {
   }
 }
 
-
-function debugDumpReactions() {
-  let output: string = "";
-  for (const reaction of reactions) {
-    for (const input of reaction.inputs) {
-      output += input.quantity + " " + input.chemical + ", " 
-    }
-    output += "==> " + reaction.output.quantity + " " + reaction.output.chemical + "\n";
+function quantityOfChemicalInStock(chemical: string): number {
+  let chemicalQuantityInStock: ChemicalQuantity = chemicalQuantitiesInStock.find(chemicalQuantity => chemicalQuantity.chemical === chemical);
+  if (chemicalQuantityInStock) {
+    return chemicalQuantityInStock.quantity;
   }
-  console.log(output);
+  return 0;
+}
+
+function modifyQuantityOfChemicalInStock(chemical: string, quantity: number) {
+  let chemicalQuantityInStock: ChemicalQuantity = chemicalQuantitiesInStock.find(chemicalQuantity => chemicalQuantity.chemical === chemical);
+
+  if (!chemicalQuantityInStock) {
+    chemicalQuantityInStock = new ChemicalQuantity(chemical, 0);
+    chemicalQuantitiesInStock.push(chemicalQuantityInStock);
+  }
+
+  chemicalQuantityInStock.quantity += quantity;
+
+  if (chemicalQuantityInStock.quantity < 0) {
+    throw "Quantity of " + chemicalQuantityInStock.chemical + " is now negative (" + chemicalQuantityInStock.quantity + ")!";
+  }
+}
+
+function collectAnOre() {
+  oreRequired += 1;
+  modifyQuantityOfChemicalInStock("ORE", 1);
+}
+
+function produceChemical(chemical: string) {
+  if (chemical === "ORE") {
+    collectAnOre();
+  }
+  else {
+    const reaction: Reaction = reactions.find(reaction => reaction.output.chemical === chemical);
+
+    for (const input of reaction.inputs) {
+      // Produce at least as much as we need of this input chemical.
+      while (quantityOfChemicalInStock(input.chemical) < input.quantity) {
+        produceChemical(input.chemical);
+      }
+
+      // Now that we have enough, "use up" (subtract) as much of that input as we need for this reaction.
+      modifyQuantityOfChemicalInStock(input.chemical, -1 * input.quantity);
+    }
+
+    // Now that we've used up the required inputs, add the output.
+    modifyQuantityOfChemicalInStock(chemical, reaction.output.quantity);
+  }
 }
 
 setReactionsFromInputFile();
 
-debugDumpReactions();
+produceChemical("FUEL");
+
+console.log(oreRequired);
