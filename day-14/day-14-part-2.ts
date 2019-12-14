@@ -22,7 +22,6 @@ class Reaction {
 
 let reactions: Reaction[] = [];
 let chemicalQuantitiesInStock: ChemicalQuantity[] = [];
-let oreRequired: number = 0;
 
 function parseChemicalQuantityString(input: string): ChemicalQuantity {
   const quantityAndChemical = input.trim().split(" ");
@@ -74,14 +73,14 @@ function modifyQuantityOfChemicalInStock(chemical: string, quantity: number) {
   }
 }
 
-function collectAnOre() {
-  oreRequired += 1;
-  modifyQuantityOfChemicalInStock("ORE", 1);
-}
-
 function produceChemical(chemical: string) {
   if (chemical === "ORE") {
-    collectAnOre();
+    if (quantityOfChemicalInStock("ORE") > 0) {
+      modifyQuantityOfChemicalInStock("ORE", -1);
+    }
+    else {
+      throw "We were able to produce " + quantityOfChemicalInStock("FUEL") + " FUEL before running out of ore.";
+    }
   }
   else {
     const reaction: Reaction = reactions.find(reaction => reaction.output.chemical === chemical);
@@ -103,6 +102,8 @@ function produceChemical(chemical: string) {
 
 setReactionsFromInputFile();
 
-produceChemical("FUEL");
+modifyQuantityOfChemicalInStock("ORE", 103774200);
 
-console.log(oreRequired);
+while (true) {
+  produceChemical("FUEL");
+}
