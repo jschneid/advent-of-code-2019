@@ -25,10 +25,9 @@ class Location {
 
 
 const map: Location[] = [];
-
-let oxygenSystemLocation: Location = null;
+let oxygenRoomFound: boolean = false;
 let robotPosition: Position = new Position(0, 0);
-const startLocation: Location = new Location(robotPosition, true, 0);
+const startLocation: Location = new Location(robotPosition, true, -1);
 const computer: IntcodeComputer = new IntcodeComputer("day-15/input.txt");
 
 
@@ -69,10 +68,16 @@ function getReverseOfDirection(direction: number): number {
 
 function exploreLocation(location: Location) {
   for (let direction = 1; direction <= 4; direction++) {
-    // Skip this direction if it has already been mapped
     const newPosition: Position = getRelativePositionAtDirection(robotPosition, direction);
     let targetLocation: Location = getLocationAt(newPosition);
-    if (targetLocation) {
+
+    // Skip this direction if it has already been mapped, and we haven't found the oxygen room yet
+    if (targetLocation && !oxygenRoomFound) {
+      continue;
+    }
+
+    // Skip this direction if we have found the oxygen room, and the target room already has a distance set
+    if (targetLocation && (targetLocation.distance >= 0 || !targetLocation.isOpen) && oxygenRoomFound) {
       continue;
     }
 
@@ -87,11 +92,29 @@ function exploreLocation(location: Location) {
     if (result === 1 || result === 2) {
       robotPosition = newPosition;
 
-      targetLocation = new Location(newPosition, true, location.distance + 1);
-      map.push(targetLocation);
+      let targetLocationDistance: number;
+      if (oxygenRoomFound) {
+        targetLocationDistance = location.distance + 1;
+      }
+      else {
+        targetLocationDistance = -1;
+      }
 
+      if (!targetLocation) {
+        targetLocation = new Location(newPosition, true, targetLocationDistance);
+        map.push(targetLocation);
+      } 
+      else {
+        targetLocation.distance = targetLocationDistance;
+      }
+
+      // If this is the oxygen system location, we'll now start setting the distance property of each location
+      // as the distance from THIS location.
+      // (1) Set the distance of this room to 0.
+      // (2) Set a flag to start RE-exploring locations, this time setting the distance value.
       if (result === 2) {
-        oxygenSystemLocation = targetLocation;
+        targetLocation.distance = 0;
+        oxygenRoomFound = true;
       }
 
       exploreLocation(targetLocation);
@@ -112,62 +135,21 @@ function exploreLocation(location: Location) {
   }
 }
 
-function debugPrintMap() {
-  let minX = Number.MAX_VALUE;
-  let maxX = Number.MIN_VALUE;
-  let minY = Number.MAX_VALUE;
-  let maxY = Number.MIN_VALUE;
-  for (const location of map) {
-    if (location.position.x < minX) {
-      minX = location.position.x;
-    }
-    if (location.position.x > maxX) {
-      maxX = location.position.x;
-    }
-    if (location.position.y < minY) {
-      minY = location.position.y;
-    }
-    if (location.position.y > maxY) {
-      maxY = location.position.y;
-    }
-  }
-
-  let printedMap = "";
-  for (let y = minY; y <= maxY; y++) {
-    for (let x = minX; x <= maxX; x++) {
-      const location = getLocationAt(new Position(x, y));
-      if (location) {
-        if (oxygenSystemLocation && location.position.x === oxygenSystemLocation.position.x && location.position.y === oxygenSystemLocation.position.y) {
-          printedMap += "O";
-        }
-        else if (location.position.x === 0 && location.position.y === 0) {
-          printedMap += "S";
-        }
-        else if (location.isOpen) { 
-          printedMap += ".";
-        }
-        else {
-          printedMap += "█";
-        }
-      }
-      else {
-        printedMap += " ";
-      }
-    }
-    printedMap += "\n";
-  }
-  console.log(printedMap);
-}
-
-// 1. Map the entire space
 map.push(startLocation);
 exploreLocation(startLocation);
-debugPrintMap();
 
-// 2. Find the shortest path from 0,0 to the oxygen room
+// Now, the "distance" property of each location is set to the distance from there to the oxygen room.
+// So, our solution is the max distance.
+
+let maxDistance: number = 0;
+for (let location of map) {
+  if (location.distance > maxDistance) {
+    maxDistance = location.distance;
+  }
+}
 
 // Let's see if we can "cheat" and assume that there are no loops, therefore the distance
 // that we marked the oxygen location as having is the ONLY distance for that room?
 // Based on how the map looks -- narrow hallways only, no 2x2 or larger open rooms, no 
 // obvious loops -- maybe this will work?
-console.log(oxygenSystemLocation.distance);
+console.log(maxDistance);
