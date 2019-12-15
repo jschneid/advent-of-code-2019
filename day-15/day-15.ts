@@ -14,10 +14,12 @@ class Position {
 class Location {
   readonly position: Position;
   readonly isOpen: boolean;
+  distance: number;
 
-  constructor(position: Position, isOpen: boolean) {
+  constructor(position: Position, isOpen: boolean, distance: number) {
     this.position = position;
     this.isOpen = isOpen;
+    this.distance = distance;
   }
 }
 
@@ -26,7 +28,7 @@ const map: Location[] = [];
 
 let oxygenSystemLocation: Location = null;
 let robotPosition: Position = new Position(0, 0);
-const startLocation: Location = new Location(robotPosition, true);
+const startLocation: Location = new Location(robotPosition, true, 0);
 const computer: IntcodeComputer = new IntcodeComputer("day-15/input.txt");
 
 
@@ -85,7 +87,7 @@ function exploreLocation(location: Location) {
     if (result === 1 || result === 2) {
       robotPosition = newPosition;
 
-      targetLocation = new Location(newPosition, true);
+      targetLocation = new Location(newPosition, true, location.distance + 1);
       map.push(targetLocation);
 
       if (result === 2) {
@@ -104,7 +106,7 @@ function exploreLocation(location: Location) {
     }
     else {
       // Else, mark that location as being a wall
-      targetLocation = new Location(newPosition, false);
+      targetLocation = new Location(newPosition, false, -1);
       map.push(targetLocation);
     }
   }
@@ -164,3 +166,8 @@ debugPrintMap();
 
 // 2. Find the shortest path from 0,0 to the oxygen room
 
+// Let's see if we can "cheat" and assume that there are no loops, therefore the distance
+// that we marked the oxygen location as having is the ONLY distance for that room?
+// Based on how the map looks -- narrow hallways only, no 2x2 or larger open rooms, no 
+// obvious loops -- maybe this will work?
+console.log(oxygenSystemLocation.distance);
