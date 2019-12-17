@@ -1,0 +1,96 @@
+import { IntcodeComputer } from './IntcodeComputer';
+
+class Location {
+  readonly isScaffold: boolean;
+
+  constructor(isScaffold: boolean) {
+    this.isScaffold = isScaffold;
+  }
+}
+
+const computer: IntcodeComputer = new IntcodeComputer("day-17/ascii.txt");
+const map: Location[][] = new Array<Array<Location>>();
+let vacuumRobotLocation; 
+let vacuumRobotFacing;
+
+function addLocationToMap(x: number, y: number, isScaffold: boolean): Location {
+  const location: Location = new Location(isScaffold);
+  map[y][x] = location;
+  return location;
+}
+
+function initializeMapFromAsciiProgram() {
+  let x = 0; 
+  let y = 0;
+
+  computer.runProgram();
+  while (computer.outputQueue.length > 0) {
+    if (x === 0) {
+      map[y] = new Array<Location>();
+    }
+
+    const outputCode: number = computer.outputQueue.shift();
+    const output: string = String.fromCharCode(outputCode);
+
+    switch(output) {
+      case "#":
+        addLocationToMap(x, y, true);
+        x++;
+        break;
+      case ".":
+        addLocationToMap(x, y, false);
+        x++;
+        break;
+      case "^":
+      case "v":
+      case "<":
+      case ">":
+        vacuumRobotFacing = output;
+        vacuumRobotLocation = addLocationToMap(x, y, true);
+        x++;
+        break;
+      case "\n":
+        x = 0;
+        y++;
+      break;
+      default:
+        throw "Unrecognized output character: " + output + " (" + outputCode + ")";
+    }
+  }
+}
+
+function debugDrawMap() {
+  for (let y = 0; y < map.length; y++) {
+    let mapRow = "";
+    for (let x = 0; x < map[y].length; x++) {
+      if (vacuumRobotLocation == map[y][x]) {
+        mapRow += vacuumRobotFacing;
+      }
+      else {
+        mapRow += map[y][x].isScaffold ? "#" : ".";
+      }
+    }
+    console.log(mapRow);
+  }
+}
+
+function sumAlignmentParameters(): number {
+  let totalAlignmentParameters: number = 0;
+  for (let y = 1; y < (map.length - 1); y++) {
+    for (let x = 1; x < (map[y].length - 1); x++) {
+      if (map[y][x].isScaffold &&
+        map[y-1][x].isScaffold &&
+        map[y][x-1].isScaffold &&
+        map[y][x+1].isScaffold &&
+        map[y+1][x].isScaffold) {
+          const alignment = x * y;
+          totalAlignmentParameters += alignment;
+        }
+    }
+  }
+  return totalAlignmentParameters;
+}
+
+initializeMapFromAsciiProgram();
+debugDrawMap();
+console.log(sumAlignmentParameters());
