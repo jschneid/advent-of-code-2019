@@ -66,5 +66,23 @@ function debugDrawMap() {
   }
 }
 
+function sumAlignmentParameters(): number {
+  let totalAlignmentParameters: number = 0;
+  for (let y = 1; y < (map.length - 1); y++) {
+    for (let x = 1; x < (map[y].length - 1); x++) {
+      if (map[y][x].isScaffold &&
+        map[y-1][x].isScaffold &&
+        map[y][x-1].isScaffold &&
+        map[y][x+1].isScaffold &&
+        map[y+1][x].isScaffold) {
+          const alignment = x * y;
+          totalAlignmentParameters += alignment;
+        }
+    }
+  }
+  return totalAlignmentParameters;
+}
+
 initializeMapFromAsciiProgram();
 debugDrawMap();
+console.log(sumAlignmentParameters());
