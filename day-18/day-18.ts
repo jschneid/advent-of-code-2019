@@ -27,7 +27,7 @@ class Location {
     }
   }
 
-  toString():string {
+  toString(): string {
     if (this.isWall) {
       return "█";
     }
@@ -41,24 +41,14 @@ class Location {
   }
 }
 
-class Position {
-  readonly x: number;
-  readonly y: number;
-
-  constructor(x: number, y: number) {
-    this.x = x;
-    this.y = y;
-  }
-}
-
 interface ItemLocation {
   [key: string]: Position;
 }
 
 const map: Location[][] = new Array<Array<Location>>();
-const keys: ItemLocation = {};
-const doors: ItemLocation = {};
-let entrance: Position;
+// const keys: ItemLocation = {};
+// const doors: ItemLocation = {};
+let entrance: Location;
 
 function getInputLinesFromFile(): string[] {
   const text: string = fs.readFileSync("day-18/input.txt", "utf8");
@@ -78,19 +68,24 @@ function initializeMapFromInput() {
       map[y][x] = new Location(inputCharacter);
 
       if (inputCharacter === "@") {
-        entrance = new Position(x, y);
+        entrance = map[y][x];
       }
     }
     y++;
   }
 }
 
+let queue = []
+
+function findShortestPath() { 
+
+}
 
 function debugDrawMap() {
   for (let y = 0; y < map.length; y++) {
     let mapRow = "";
     for (let x = 0; x < map[y].length; x++) {
-      if (entrance.x === x && entrance.y === y) {
+      if (entrance === map[y][x]) {
         mapRow += "@";
       }
       else {
@@ -103,3 +98,4 @@ function debugDrawMap() {
 
 initializeMapFromInput();
 debugDrawMap();
+
