@@ -51,11 +51,11 @@ interface ItemLocation {
 }
 
 const map: Location[][] = new Array<Array<Location>>();
-let entrance: Location;
+let entrances: Location[] = [];
 let keyCount: number;
 
 function getInputLinesFromFile(): string[] {
-  const text: string = fs.readFileSync("day-18/input.txt", "utf8");
+  const text: string = fs.readFileSync("day-18/input-part-2.txt", "utf8");
   const lines: string[] = text.split("\n");
   return lines;
 }
@@ -73,7 +73,7 @@ function initializeMapFromInput() {
       map[y][x] = new Location(inputCharacter, x, y);
 
       if (inputCharacter === "@") {
-        entrance = map[y][x];
+        entrances.push(map[y][x]);
       }
 
       if (inputCharacter >= 'a' && inputCharacter <= 'z') {
@@ -151,7 +151,7 @@ function stringsAreEqualIgnoringOrderExceptFinalCharacter(firstStr: string, seco
   return true;
 }
 
-function exploreLocation(location: Location, visitedLocations: Set<Location>, solution: Solution, explorationQueue: Location[], distance: number): void { 
+function exploreLocation(location: Location, visitedLocations: Set<Location>, solution: Solution, explorationQueue: Location[], distance: number, startLocations: Location[], bot: number): void { 
   if (location.isWall) {
     return;
   }
@@ -160,10 +160,20 @@ function exploreLocation(location: Location, visitedLocations: Set<Location>, so
   }
   else if (location.key) {
     if (!solution.keysAcquired.includes(location.key)) {
+
       const newSolution = addNewSolution(solution, location.key, distance);
 
       if (newSolution && newSolution.keysAcquired.length < keyCount) {
-        initiateBreadthFirstSearch(location, newSolution);
+        const updatedLocations: Location[] = [];
+        for (let i = 0; i < 4; i++) {
+          if (i === bot) {
+            updatedLocations.push(location);
+          }
+          else {
+            updatedLocations.push(startLocations[i]);
+          }
+        }
+        initiateBreadthFirstSearch(updatedLocations, newSolution);
       }
     
       return;
@@ -178,21 +188,24 @@ function exploreLocation(location: Location, visitedLocations: Set<Location>, so
   explorationQueue.push(location);
 }
 
-function initiateBreadthFirstSearch(startLocation: Location, solution: Solution) { 
-  let visitedLocations = new Set<Location>([startLocation]);
-  let explorationQueue: Location[] = [startLocation];
-  let distances = new Map<Location, number>();
-  distances.set(startLocation, 0);
+function initiateBreadthFirstSearch(startLocations: Location[], solution: Solution) { 
+  for (let bot = 0; bot < 4; bot++) {
 
-  while (explorationQueue.length > 0) {
-    const currentLocation: Location = explorationQueue.shift();
-    visitedLocations.add(currentLocation);
-    
-    for (let direction = 1; direction <= 4; direction++) {
-      const newLocation = getLocationInDirectionFrom(direction, currentLocation);
-      const newLocationDistance: number = (distances.get(currentLocation) + 1);
-      distances.set(newLocation, newLocationDistance);
-      exploreLocation(newLocation, visitedLocations, solution, explorationQueue, newLocationDistance); 
+    let visitedLocations = new Set<Location>([startLocations[bot]]);
+    let distances = new Map<Location, number>();
+    distances.set(startLocations[bot], 0);
+    let explorationQueue: Location[] = [startLocations[bot]];
+
+    while (explorationQueue.length > 0) {
+      const activeBotCurrentLocation: Location = explorationQueue.shift();
+      visitedLocations.add(activeBotCurrentLocation);
+      
+      for (let direction = 1; direction <= 4; direction++) {
+        const activeBotNewLocation = getLocationInDirectionFrom(direction, activeBotCurrentLocation);
+        const activeBotNewLocationDistance: number = (distances.get(activeBotCurrentLocation) + 1);
+        distances.set(activeBotNewLocation, activeBotNewLocationDistance);
+        exploreLocation(activeBotNewLocation, visitedLocations, solution, explorationQueue, activeBotNewLocationDistance, startLocations, bot); 
+      }
     }
   }
 }
@@ -212,14 +225,14 @@ const solutions: Solution[] = [];
 function start() {
   const emptySolution = new Solution("", 0);
 
-  initiateBreadthFirstSearch(entrance, emptySolution);
+  initiateBreadthFirstSearch(entrances, emptySolution);
 }
 
 function debugDrawMap() {
   for (let y = 0; y < map.length; y++) {
     let mapRow = "";
     for (let x = 0; x < map[y].length; x++) {
-      if (entrance === map[y][x]) {
+      if (entrances.includes(map[y][x])) {
         mapRow += "@";
       }
       else {
