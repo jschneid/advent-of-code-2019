@@ -6,7 +6,6 @@ class Location {
   readonly key: string;
   readonly x: number;
   readonly y: number;
-  distance: number;
 
   constructor(inputCharacter: string, x: number, y: number) {
     this.x = x;
@@ -96,7 +95,6 @@ class Destination {
   }
 }
 
-
 // North: 1
 // East: 2
 // South: 3
@@ -113,25 +111,47 @@ function getLocationInDirectionFrom(direction: number, source: Location) {
 }
 
 function addNewSolution(baseSolution: Solution, key: string, distance: number): Solution {
+  const newKeysAcquired: string = baseSolution.keysAcquired + key;
+  const newSolution: Solution = new Solution(newKeysAcquired, (baseSolution.moves + distance));
 
-  console.log("Found a solution. New key: " + key + " distance: " + distance + " added to existing keys: " + debugOutputKeys(baseSolution.keysAcquired) + " moves: " + baseSolution.moves );
-
-  const newKeysAcquired: Set<string> = new Set<string>(baseSolution.keysAcquired).add(key);
-  const newSolution: Solution = new Solution(Array.from(newKeysAcquired), (baseSolution.moves + distance));
-
-  console.log("The new complete set of keys is " + debugOutputKeys(newSolution.keysAcquired) + " with size " + newSolution.keysAcquired.size);
-  // console.log("The new complete set of keys is " + debugOutputKeys(newKeysAcquired) + " with size " + newKeysAcquired.size);
-
-  // TODO: Reject this solution if we already have a solution with this same set of keys
-  // (disregarding order) and equal or fewer moves.
-  // If we have a solution with the same set of keys but MORE moves, discard that one?
-  // (And abort active processing of it?)
+  // Reject this solution if we already have a solution with this same set of keys
+  // (disregarding order, except that the final location is the same) and equal or fewer moves.
+  for (let solution of solutions) {
+    if (stringsAreEqualIgnoringOrderExceptFinalCharacter(solution.keysAcquired, newKeysAcquired)) {
+      if (solution.moves <= newSolution.moves) {
+        return null;
+      }
+      else {
+        // Could add another optimization here:
+        // The existing solution has more moves; discard it, and halt its processing
+      }
+    }
+  }
   
   solutions.push(newSolution);
   return newSolution;
 }
 
-function exploreLocation(location: Location, visitedLocations: Set<Location>, solution: Solution, explorationQueue: Location[]): void { 
+function stringsAreEqualIgnoringOrderExceptFinalCharacter(firstStr: string, secondStr: string): boolean {
+  if (firstStr.length !== secondStr.length) {
+    return false;
+  }
+
+  if (firstStr.charAt(firstStr.length - 1) !== secondStr.charAt(secondStr.length - 1)) {
+    return false;
+  }
+
+  let first: string[] = firstStr.split('').sort();
+  let second: string[] = secondStr.split('').sort();
+  for (let i = 0; i < first.length; i++) {
+    if (first[i] !== second[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function exploreLocation(location: Location, visitedLocations: Set<Location>, solution: Solution, explorationQueue: Location[], distance: number): void { 
   if (location.isWall) {
     return;
   }
@@ -139,13 +159,10 @@ function exploreLocation(location: Location, visitedLocations: Set<Location>, so
     return;
   }
   else if (location.key) {
-    if (!solution.keysAcquired.has(location.key)) {
-      const newSolution = addNewSolution(solution, location.key, location.distance);
+    if (!solution.keysAcquired.includes(location.key)) {
+      const newSolution = addNewSolution(solution, location.key, distance);
 
-      if (newSolution.keysAcquired.size < keyCount) {
-
-        console.log(newSolution.keysAcquired.size + " < " + keyCount + " so kicking off a new search");
-
+      if (newSolution && newSolution.keysAcquired.length < keyCount) {
         initiateBreadthFirstSearch(location, newSolution);
       }
     
@@ -153,7 +170,7 @@ function exploreLocation(location: Location, visitedLocations: Set<Location>, so
     }
   }
   else if (location.door) {
-    if (!solution.keysAcquired.has(location.door.toLowerCase())) {
+    if (!solution.keysAcquired.includes(location.door.toLowerCase())) {
       return;
     }
   }
@@ -161,12 +178,11 @@ function exploreLocation(location: Location, visitedLocations: Set<Location>, so
   explorationQueue.push(location);
 }
 
-
-
 function initiateBreadthFirstSearch(startLocation: Location, solution: Solution) { 
   let visitedLocations = new Set<Location>([startLocation]);
   let explorationQueue: Location[] = [startLocation];
-  startLocation.distance = 0;
+  let distances = new Map<Location, number>();
+  distances.set(startLocation, 0);
 
   while (explorationQueue.length > 0) {
     const currentLocation: Location = explorationQueue.shift();
@@ -174,42 +190,29 @@ function initiateBreadthFirstSearch(startLocation: Location, solution: Solution)
     
     for (let direction = 1; direction <= 4; direction++) {
       const newLocation = getLocationInDirectionFrom(direction, currentLocation);
-      newLocation.distance = currentLocation.distance + 1;
-      exploreLocation(newLocation, visitedLocations, solution, explorationQueue); //gettableKeys, distance);
-
+      const newLocationDistance: number = (distances.get(currentLocation) + 1);
+      distances.set(newLocation, newLocationDistance);
+      exploreLocation(newLocation, visitedLocations, solution, explorationQueue, newLocationDistance); 
     }
   }
 }
 
-function debugOutputKeys(keys: Set<string>): string {
-  let output = "";
-  for (let key of Array.from(keys)) {
-    output += key;
-  }
-  return output;
-}
-
-
 class Solution {
-  keysAcquired: Set<string>; 
-  moves: number;
+  readonly keysAcquired: string; 
+  readonly moves: number;
 
-  constructor(keysAcquired: string[], moves: number) {
-    this.keysAcquired = new Set<string>(keysAcquired);
+  constructor(keysAcquired: string, moves: number) {
+    this.keysAcquired = keysAcquired;
     this.moves = moves;
   }
 }
 
 const solutions: Solution[] = [];
-  
 
 function start() {
-  const emptySolution = new Solution([], 0);
+  const emptySolution = new Solution("", 0);
 
   initiateBreadthFirstSearch(entrance, emptySolution);
-
-
-
 }
 
 function debugDrawMap() {
@@ -233,8 +236,6 @@ console.log (keyCount + " keys");
 
 start();
 
-for (let solution of solutions.filter(s => s.keysAcquired.size === keyCount)) {
-  console.log('' + solution.moves);
+for (let solution of solutions.filter(s => s.keysAcquired.length === keyCount)) {
+  console.log(solution.moves + " " + solution.keysAcquired) ;
 }
-
-// TODO NEXT: Debug the current output. It's finding an 84 step solution but the real solution is 86
