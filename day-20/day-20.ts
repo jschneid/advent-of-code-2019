@@ -65,10 +65,10 @@ class Location {
 }
 
 function initializeMapFromInput() {
-  for (let y = 2; y < inputLines.length - 2; y++) {
+  for (let y = 0; y < inputLines.length; y++) {
     map[y] = new Array<Location>();
     const line = inputLines[y];
-    for (let x = 2; x < line.length - 2; x++) {
+    for (let x = 0; x < line.length; x++) {
       const inputCharacter = line.charAt(x);
       const warp: string = getWarpForLocation(x, y);
 
@@ -89,16 +89,16 @@ function isLetter(character: string): boolean {
 }
 
 function getWarpForLocation(x: number, y: number): string {
-  if (isLetter(inputLines[y-1].charAt(x))) {
+  if (y >= 2 && isLetter(inputLines[y-1].charAt(x))) {
     return inputLines[y-2].charAt(x) + inputLines[y-1].charAt(x);
   }
-  else if (isLetter(inputLines[y+1].charAt(x))) {
+  else if (y < inputLines.length - 2 && isLetter(inputLines[y+1].charAt(x))) {
     return inputLines[y+1].charAt(x) + inputLines[y+2].charAt(x);
   }
-  else if (isLetter(inputLines[y].charAt(x-1))) {
+  else if (x >= 2 && isLetter(inputLines[y].charAt(x-1))) {
     return inputLines[y].charAt(x-2) + inputLines[y].charAt(x-1);
   }
-  else if (isLetter(inputLines[y].charAt(x+1))) {
+  else if (x < inputLines[y].length - 2 && isLetter(inputLines[y].charAt(x+1))) {
     return inputLines[y].charAt(x+1) + inputLines[y].charAt(x+2);
   }
   return null;
@@ -106,14 +106,121 @@ function getWarpForLocation(x: number, y: number): string {
 
 
 function debugPrintMap() {
-  for (let y = 2; y < inputLines.length-2; y++) {
+  for (let y = 0; y < inputLines.length; y++) {
     let line: string = "";
-    for (let x = 2; x < inputLines.length-2; x++) {
+    for (let x = 0; x < inputLines.length; x++) {
       line += map[y][x].toString();
     }
     console.log(line);
   }
 }
 
+// North: 1
+// East: 2
+// South: 3
+// West: 4
+function getLocationInDirectionFrom(direction: number, source: Location) {
+  let destinationX: number = source.x;
+  let destinationY: number = source.y;
+
+  switch (direction) {
+    case 1: 
+      destinationY = source.y - 1;
+      break;
+    case 2: 
+      destinationX = source.x + 1;
+      break;
+    case 3:
+      destinationY = source.y + 1;
+      break;
+    case 4:
+      destinationX = source.x - 1;
+      break;
+    default:
+      throw "Unrecognized direction: " + direction;
+  }
+
+  if (destinationX < 2 || destinationY < 2 || destinationX > map[2].length - 2 || destinationY > map.length - 2) {
+    return null;
+  }
+
+  return map[destinationY][destinationX];
+}
+
+function getWarpDestination(location: Location): Location {
+  // If this turns out to be slow, we could do this once for each portal location after 
+  // we set up the map and cache the result, e.g. in a "target" attribute on each Location 
+  // that has a warp.
+  for (let y = 0; y < inputLines.length; y++) {
+    for (let x = 0; x < inputLines.length; x++) {
+      if (map[y][x] !== location && map[y][x].warp === location.warp) {
+        return map[y][x];
+      }
+    }
+  }
+}
+
+let bestSolution: number = Number.MAX_VALUE;
+
+function exploreLocation(location: Location, pathDistances: Map<Location, number>, explorationQueue: Location[], distance: number): void { 
+  if (location.isWall) {
+    return;
+  }
+  else if (location.isEmptySpace) {
+    return;
+  }
+  // Stop exploring if we've been to this location before, and it took less moves.
+  else if (pathDistances.get(location) && pathDistances.get(location) <= distance) {
+    return;
+  }
+  else if (location == exit) {
+    if (distance < bestSolution) {
+      bestSolution = distance;
+      console.log ('New best solution found: ' + bestSolution);
+      return;
+    }
+  }
+
+  console.log('Adding ' + location.x + ',' + location.y + ' to queue');
+
+  pathDistances.set(location, distance);
+  explorationQueue.push(location);
+}
+
+function initiateBreadthFirstSearch(startLocation: Location) { 
+  let explorationQueue: Location[] = [startLocation];
+  let pathDistances = new Map<Location, number>();
+  pathDistances.set(startLocation, 0);
+
+  while (explorationQueue.length > 0) {
+    const currentLocation: Location = explorationQueue.shift();
+    
+    for (let direction = 1; direction <= 4; direction++) {
+      const newLocation: Location = getLocationInDirectionFrom(direction, currentLocation);
+      if (newLocation) {
+        const newLocationDistance: number = (pathDistances.get(currentLocation) + 1);
+        exploreLocation(newLocation, pathDistances, explorationQueue, newLocationDistance); 
+      }
+    }
+
+    if (currentLocation.warp) {
+      console.log('There is a warp here!: ' + currentLocation.warp);
+    }
+
+    // There's also a 5th possible "direction" in this puzzle: jumping through the warp portal!
+    if (currentLocation.warp) {
+      const newLocation: Location = getWarpDestination(currentLocation);
+      const newLocationDistance: number = (pathDistances.get(currentLocation) + 1);
+      exploreLocation(newLocation, pathDistances, explorationQueue, newLocationDistance); 
+    }
+  }
+}
+
+function start() {
+  initiateBreadthFirstSearch(entrance);
+}
+
 initializeMapFromInput();
+
 debugPrintMap();
+start();
