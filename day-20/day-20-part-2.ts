@@ -172,7 +172,7 @@ function getWarpDestination(location: Location): Location {
   // we set up the map and cache the result, e.g. in a "target" attribute on each Location 
   // that has a warp.
   for (let y = 0; y < inputLines.length; y++) {
-    for (let x = 0; x < inputLines.length; x++) {
+    for (let x = 0; x < inputLines[y].length; x++) {
       if (map[y][x] !== location && map[y][x].warp === location.warp) {
         return map[y][x];
       }
@@ -182,51 +182,90 @@ function getWarpDestination(location: Location): Location {
 
 let bestSolution: number = Number.MAX_VALUE;
 
-function exploreLocation(location: Location, pathDistances: Map<Location, number>, explorationQueue: Location[], distance: number): void { 
-  if (location.isWall) {
+function exploreLocation(locationLevel: LocationLevel, pathDistances: Map<LocationLevel, number>, explorationQueue: LocationLevel[], distance: number): void { 
+  if (locationLevel.location.isWall) {
     return;
   }
-  else if (location.isEmptySpace) {
+  else if (locationLevel.location.isEmptySpace) {
     return;
   }
-  // Stop exploring if we've been to this location before, and it took less moves.
-  else if (pathDistances.get(location) && pathDistances.get(location) <= distance) {
+  // Stop exploring if we've been to this location before on this level, and it took less moves.
+  else if (pathDistances.has(locationLevel) && pathDistances.get(locationLevel) <= distance) {
     return;
   }
-  else if (location == exit) {
+  else if (locationLevel.location == exit && locationLevel.level === 0) {
     if (distance < bestSolution) {
       bestSolution = distance;
-      console.log ('New best solution found: ' + bestSolution);
+      // console.log ('New best solution found: ' + bestSolution);
+      throw('New best solution found: ' + bestSolution);
       return;
     }
   }
 
-  pathDistances.set(location, distance);
-  explorationQueue.push(location);
+  pathDistances.set(locationLevel, distance);
+  explorationQueue.push(locationLevel);
+}
+
+class LocationLevel {
+  readonly location: Location;
+  readonly level: number;
+
+  constructor(location: Location, level: number) {
+    this.location = location;
+    this.level = level;
+  }
+}
+
+const locationLevels: LocationLevel[] = [];
+
+function getLocationLevel(location: Location, level: number): LocationLevel {
+  let target: LocationLevel = locationLevels.find(ll => ll.location == location && ll.level === level);
+  if (!target) {
+    target = new LocationLevel(location, level);
+    locationLevels.push(target);
+  }
+  return target;
 }
 
 function initiateBreadthFirstSearch(startLocation: Location) { 
-  let explorationQueue: Location[] = [startLocation];
-  let pathDistances = new Map<Location, number>();
-  pathDistances.set(startLocation, 0);
-  let level: number = 0;
+  const startLocationLevel = getLocationLevel(startLocation, 0);
+  let explorationQueue: LocationLevel[] = [startLocationLevel];
+  let pathDistances = new Map<LocationLevel, number>();
+  pathDistances.set(startLocationLevel, 0);
 
   while (explorationQueue.length > 0) {
-    const currentLocation: Location = explorationQueue.shift();
-    
+    const currentLocationLevel: LocationLevel = explorationQueue.shift();
+    const currentLocation: Location = currentLocationLevel.location;
+    const currentLevel: number = currentLocationLevel.level;
+
     for (let direction = 1; direction <= 4; direction++) {
       const newLocation: Location = getLocationInDirectionFrom(direction, currentLocation);
+
       if (newLocation) {
-        const newLocationDistance: number = (pathDistances.get(currentLocation) + 1);
-        exploreLocation(newLocation, pathDistances, explorationQueue, newLocationDistance); 
+        const newLocationDistance: number = (pathDistances.get(currentLocationLevel) + 1);
+        const newLocationLevel: LocationLevel = getLocationLevel(newLocation, currentLevel);
+        exploreLocation(newLocationLevel, pathDistances, explorationQueue, newLocationDistance); 
       }
     }
  
     // There's also a 5th possible "direction" in this puzzle: jumping through the warp portal!
     if (currentLocation.warp) {
-      const newLocation: Location = getWarpDestination(currentLocation);
-      const newLocationDistance: number = (pathDistances.get(currentLocation) + 1);
-      exploreLocation(newLocation, pathDistances, explorationQueue, newLocationDistance); 
+      if (currentLocation.isOuter && currentLevel === 0) {
+        // We can't go out a level if we're already at level 0. Don't warp.
+      } 
+      else {
+        const newLocation: Location = getWarpDestination(currentLocation);
+        const newLevel = (currentLocation.isOuter ? (currentLevel - 1) : (currentLevel + 1));
+        const newLocationLevel: LocationLevel = getLocationLevel(newLocation, newLevel);
+        const newLocationDistance: number = (pathDistances.get(currentLocationLevel) + 1);
+
+
+        if (!(pathDistances.has(newLocationLevel) && pathDistances.get(newLocationLevel) <= newLocationDistance)) {
+          console.log('Warping ' + (currentLocationLevel.location.isOuter ? 'up' : 'down') + ' to ' + newLocation.x + ',' + newLocation.y + ' level ' + newLevel + ' via ' + newLocationLevel.location.warp);
+        }
+
+        exploreLocation(newLocationLevel, pathDistances, explorationQueue, newLocationDistance); 
+      }
     }
   }
 }
@@ -238,4 +277,4 @@ function start() {
 initializeMapFromInput();
 
 debugPrintMap();
-//start();
+start();
