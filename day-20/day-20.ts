@@ -70,7 +70,11 @@ function initializeMapFromInput() {
     const line = inputLines[y];
     for (let x = 0; x < line.length; x++) {
       const inputCharacter = line.charAt(x);
-      const warp: string = getWarpForLocation(x, y);
+
+      let warp: string = null;
+      if (inputCharacter === '.') {
+        warp = getWarpForLocation(x, y);
+      }
 
       map[y][x] = new Location(inputCharacter, x, y, warp);
 
@@ -106,8 +110,13 @@ function getWarpForLocation(x: number, y: number): string {
 
 
 function debugPrintMap() {
+  let xAxis: string = " ";
+  for (let i = 0; i < inputLines[0].length; i++) {
+    xAxis += (i % 10);
+  }
+  console.log(xAxis);
   for (let y = 0; y < inputLines.length; y++) {
-    let line: string = "";
+    let line: string = "" + (y % 10);
     for (let x = 0; x < inputLines.length; x++) {
       line += map[y][x].toString();
     }
@@ -181,8 +190,6 @@ function exploreLocation(location: Location, pathDistances: Map<Location, number
     }
   }
 
-  console.log('Adding ' + location.x + ',' + location.y + ' to queue');
-
   pathDistances.set(location, distance);
   explorationQueue.push(location);
 }
@@ -202,11 +209,7 @@ function initiateBreadthFirstSearch(startLocation: Location) {
         exploreLocation(newLocation, pathDistances, explorationQueue, newLocationDistance); 
       }
     }
-
-    if (currentLocation.warp) {
-      console.log('There is a warp here!: ' + currentLocation.warp);
-    }
-
+ 
     // There's also a 5th possible "direction" in this puzzle: jumping through the warp portal!
     if (currentLocation.warp) {
       const newLocation: Location = getWarpDestination(currentLocation);
