@@ -26,14 +26,23 @@ function renderOutput(output: number) {
 
 const computer: IntcodeComputer = new IntcodeComputer("day-21/input.txt");
 
+// Jump if A is a pit
 sendAsciiLine("NOT A J");
+
+// Additional jump condition: If B is a pit
 sendAsciiLine("NOT B T");
 sendAsciiLine("OR T J");
+
+// Additional jump condition: If C is a pit
 sendAsciiLine("NOT C T");
-sendAsciiLine("AND D T");
 sendAsciiLine("OR T J");
+
+// Do NOT jump if D is a pit
 sendAsciiLine("AND D J");
+
+
 sendAsciiLine("WALK");
+//sendAsciiLine("RUN");
 
 computer.runProgram();
 
