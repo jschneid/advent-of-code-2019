@@ -1,6 +1,9 @@
 import { IntcodeComputer } from './IntcodeComputer';
 
 const network: IntcodeComputer[] = [];
+let natLastPacketReceivedX: number = -1;
+let natLastPacketReceivedY: number = -2;
+let natLastPacketDeliveredY: number = -3;
 
 function initializeComputers() {
   for (let i = 0; i < 50; i++) {
@@ -22,8 +25,8 @@ function send(address: number) {
     const y: number = computer.outputQueue.shift();
 
     if (destinationAddress === 255) {
-      // Part 1 solution
-      throw("Packet sent to destination 255, x=" + x + ", y=" + y);
+      natLastPacketReceivedX = x;
+      natLastPacketReceivedY = y;
     }
     else {
       network[destinationAddress].inputQueue.push(x);
@@ -47,9 +50,36 @@ function runComputer(address: number) {
 }
 
 function runComputers() {
+  let idleDuration: number = 0;
   while(true) {
     for (let i = 0; i < 50; i++) {
       runComputer(i);
+    }
+
+    let allPacketQueuesEmpty: boolean = true;
+    for (let i = 0; i < 50; i++) {
+      if (network[i].inputQueue.length > 0) {
+        allPacketQueuesEmpty = false;
+      }
+    }
+    if (allPacketQueuesEmpty) {
+      idleDuration++;
+    } 
+    else {
+      idleDuration = 0;
+    }
+    if (idleDuration > 100) {
+      console.log("All nodes idle for 100 rounds. Pushing NAT packet to node 0: " + natLastPacketReceivedX + ", " + natLastPacketReceivedY);
+
+      if (natLastPacketDeliveredY === natLastPacketReceivedY) {
+        console.log("Sending packet Y twice in a row from NAT: " + natLastPacketDeliveredY);
+        return;
+      }
+
+      network[0].inputQueue.push(natLastPacketReceivedX);
+      network[0].inputQueue.push(natLastPacketReceivedY);
+      natLastPacketDeliveredY = natLastPacketReceivedY;
+      idleDuration = 0;
     }
   }
 }
