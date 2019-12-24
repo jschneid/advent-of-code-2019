@@ -101,7 +101,7 @@ function getAdjacentTiles(x: number, y: number, level: number): Coordinate[] {
   if (x === 0) {
     adjacentTiles.push(new Coordinate(1, 2, level - 1));
   }
-  else if (y === 2 && x === 1) {
+  else if (y === 2 && x === 3) {
     adjacentTiles.push(new Coordinate(4, 0, level + 1));
     adjacentTiles.push(new Coordinate(4, 1, level + 1));
     adjacentTiles.push(new Coordinate(4, 2, level + 1));
@@ -136,6 +136,9 @@ function incrementGeneration() {
     for (let y = 0; y < 5; y++) {
       nextGenerationTiles[level][y] = [];
       for (let x = 0; x < 5; x++) {
+        if (x === 2 && y === 2) {
+          continue;
+        }
         const adjacentBugs = getAdjacentBugs(x, y, level);
         const hasBug = safeHasBug(x, y, level);
         if (hasBug && adjacentBugs !== 1) {
@@ -160,16 +163,18 @@ function incrementGeneration() {
   tiles = nextGenerationTiles;
 }
 
-// function debugPrintTiles() {
-//   console.log("Generation " + generation + ":");
-//   for (let y = 0; y < 5; y++) {
-//     let line: string = "";
-//     for (let x = 0; x < 5; x++) {
-//       line += tiles[y][x].hasBug ? "#" : ".";
-//     }
-//     console.log(line);
-//   }
-// }
+function debugPrintTiles() {
+  for (let level = minimumLevel; level <= maximumLevel; level++) {
+    console.log("Level " + level + ":");
+    for (let y = 0; y < 5; y++) {
+      let line: string = "";
+      for (let x = 0; x < 5; x++) {
+        line += safeHasBug(x, y, level) ? "#" : ".";
+      } 
+      console.log(line);
+    }
+  }
+}
 
 function getTotalBugCount(): number {
   let bugCount: number = 0;
@@ -190,4 +195,5 @@ for (let generation = 0; generation < 200; generation++) {
   console.log("Bugs after " + generation + " generations: " + getTotalBugCount());
   incrementGeneration();
 }
+debugPrintTiles();
 console.log("Bugs after 200 generations: " + getTotalBugCount());
